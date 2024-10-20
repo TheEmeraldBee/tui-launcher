@@ -1,0 +1,13 @@
+[package]
+name = "app-launcher"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.90"
+ascii-forge = "0.2.13"
+dirs = "5.0.1"
+forge-widgets = { git = "https://github.com/TheEmeraldBee/forge-extensions.git" }
+serde = { version = "1.0.210", features = ["derive"] }
+skim = "0.10.4"
+toml = "0.8.19"
