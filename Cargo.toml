@@ -5,9 +5,10 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.90"
-ascii-forge = "0.2.13"
-dirs = "5.0.1"
+ascii-forge = "0.3.0"
 forge-widgets = { git = "https://github.com/TheEmeraldBee/forge-extensions.git" }
+crossterm = { version = "0.28.1", features = ["serde"] }
+dirs = "5.0.1"
 hyprland = "0.3.13"
 serde = { version = "1.0.210", features = ["derive"] }
 skim = "0.10.4"

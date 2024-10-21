@@ -3,21 +3,34 @@ use std::{
     fs::File,
     io::Read,
     process::{Command, Stdio},
-    thread,
     time::Duration,
 };
 
 use ascii_forge::window::Window;
-use hyprland::{
-    ctl::{notify, Color},
-    dispatch,
-    dispatch::{Dispatch, DispatchType},
-};
+use hyprland::ctl::{notify, Color};
 use serde::Deserialize;
 
 use crate::matching::rank;
 
 #[derive(Deserialize)]
+#[serde(default)]
+pub struct Style {
+    pub icon: String,
+    pub icon_color: crossterm::style::Color,
+    pub text_color: crossterm::style::Color,
+}
+
+impl Default for Style {
+    fn default() -> Self {
+        Self {
+            icon: "󱃷".to_string(),
+            icon_color: crossterm::style::Color::Reset,
+            text_color: crossterm::style::Color::Reset,
+        }
+    }
+}
+
+#[derive(Deserialize, Copy, Clone)]
 pub enum AppType {
     /// Drop to shell and run command.
     DropSh,
@@ -25,63 +38,50 @@ pub enum AppType {
     Exec,
 }
 
-impl AppType {
-    pub fn run(&self, command: &str, window: &mut Window) -> anyhow::Result<()> {
-        match self {
-            Self::DropSh => {
-                window.restore()?;
-                let status = Command::new("sh").arg(command).status()?;
-                if !status.success() {
-                    notify::call(
-                        notify::Icon::NoIcon,
-                        Duration::from_secs(5),
-                        Color::new(255, 255, 255, 255),
-                        "Latest DropSh Event From App Launcher Failed To Execute Without Errors"
-                            .to_string(),
-                    )?;
-
-                    // Allow time to see the error.
-                    thread::sleep(Duration::from_secs(2));
-                }
-            }
-            Self::Sh => {
-                let status = Command::new("sh")
-                    .arg(command)
-                    .stdin(Stdio::null())
-                    .stdout(Stdio::null())
-                    .status()?;
-
-                if !status.success() {
-                    notify::call(
-                        notify::Icon::NoIcon,
-                        Duration::from_secs(5),
-                        Color::new(255, 255, 255, 255),
-                        "Latest Sh Event From App Launcher Failed To Execute Without Errors"
-                            .to_string(),
-                    )?;
-                }
-            }
-            Self::Exec => {
-                dispatch!(Exec, command)?;
-            }
+pub fn run(
+    command_type: AppType,
+    commands: &Vec<String>,
+    window: &mut Window,
+) -> anyhow::Result<()> {
+    let status = match command_type {
+        AppType::DropSh => {
+            window.restore()?;
+            Command::new("sh").args(commands).status()?
         }
-        Ok(())
+        AppType::Sh => Command::new("sh")
+            .args(commands)
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .status()?,
+        AppType::Exec => Command::new("hyprctl")
+            .args(["dispatch", "exec"])
+            .args(commands)
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .status()?,
+    };
+
+    if !status.success() {
+        notify::call(
+            notify::Icon::Error,
+            Duration::from_secs(5),
+            Color::new(255, 255, 255, 255),
+            "Failed to execute Command for App Launcher".to_string(),
+        )?;
     }
+
+    Ok(())
 }
 
 #[derive(Deserialize)]
 pub struct AppInfo {
-    #[serde(default = "default_icon")]
-    pub icon: String,
+    #[serde(default)]
+    pub style: Style,
 
-    pub command: String,
+    pub args: Vec<String>,
 
     #[serde(rename = "type")]
     pub event_type: AppType,
-}
-
-fn default_icon() -> String {
-    "󰘔".to_string()
 }
 
 #[derive(Deserialize)]

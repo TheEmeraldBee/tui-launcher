@@ -15,7 +15,9 @@ fn main() -> Result<()> {
     let config = Config::load()?;
 
     let mut text = "".to_string();
-    let mut selected = 0;
+    let mut selected: usize = 0;
+
+    let mut should_run = false;
 
     loop {
         for event in window.events() {
@@ -31,14 +33,15 @@ fn main() -> Result<()> {
                 } else {
                     match k.code {
                         KeyCode::Up => {
-                            if selected != 0 {
-                                selected -= 1
-                            }
+                            selected = selected.saturating_sub(1usize);
                         }
                         KeyCode::Down => {
                             if selected < 10 {
-                                selected += 1
+                                selected += 1;
                             }
+                        }
+                        KeyCode::Enter => {
+                            should_run = true;
                         }
                         _ => {}
                     }
@@ -57,16 +60,20 @@ fn main() -> Result<()> {
         let mut list_pos = list_border.centered_on(vec2(center.x, 100));
         list_pos.y = 8;
 
-        if found.len() != 0 {
+        if !found.is_empty() {
             selected = selected.min(found.len() - 1);
 
             for (i, item) in found.into_iter().enumerate() {
                 let info = config.apps.get(item).unwrap();
 
                 if i == selected {
-                    render!(window, vec2(list_pos.x + 1, i as u16 + 9) => [ info.icon, " - ", item, " < ".blue() ]);
+                    if should_run {
+                        run(info.event_type, &info.args, &mut window)?;
+                        should_run = false;
+                    }
+                    render!(window, vec2(list_pos.x + 1, i as u16 + 9) => [ info.style.icon.clone().with(info.style.icon_color), "  ", item.with(info.style.text_color), " < Enter > ".blue() ]);
                 } else {
-                    render!(window, vec2(list_pos.x + 1, i as u16 + 9)=> [ info.icon, " - ", item ]);
+                    render!(window, vec2(list_pos.x + 1, i as u16 + 9)=> [ info.style.icon.clone().with(info.style.icon_color), "  ", item.with(info.style.text_color) ]);
                 }
             }
 
