@@ -68,7 +68,20 @@ fn main() -> Result<()> {
 
                 if i == selected {
                     if should_run {
-                        run(info.event_type, &info.args, &mut window)?;
+                        for event in &info.event {
+                            let should_exit = run(event.clone(), &mut window)?;
+                            if should_exit {
+                                return Ok(());
+                            }
+                        }
+
+                        for event in &config.each {
+                            let should_exit = run(event.clone(), &mut window)?;
+                            if should_exit {
+                                return Ok(());
+                            }
+                        }
+
                         should_run = false;
                     }
                     render!(window, vec2(list_pos.x + 1, i as u16 + 9) => [ info.style.icon.clone().with(info.style.icon_color), "  ", item.with(info.style.text_color), " < Enter > ".blue() ]);

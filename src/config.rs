@@ -30,35 +30,33 @@ impl Default for Style {
     }
 }
 
-#[derive(Deserialize, Copy, Clone)]
-pub enum AppType {
+#[derive(Deserialize, Clone)]
+pub enum AppEvent {
     /// Drop to shell and run command.
-    DropSh,
-    Sh,
-    Exec,
+    DropSh(Vec<String>),
+    Sh(Vec<String>),
+    Exec(Vec<String>),
+    Exit,
 }
 
-pub fn run(
-    command_type: AppType,
-    commands: &Vec<String>,
-    window: &mut Window,
-) -> anyhow::Result<()> {
-    let status = match command_type {
-        AppType::DropSh => {
+pub fn run(command: AppEvent, window: &mut Window) -> anyhow::Result<bool> {
+    let status = match command {
+        AppEvent::DropSh(args) => {
             window.restore()?;
-            Command::new("sh").args(commands).status()?
+            Command::new("sh").args(args).status()?
         }
-        AppType::Sh => Command::new("sh")
-            .args(commands)
+        AppEvent::Sh(args) => Command::new("sh")
+            .args(args)
             .stdin(Stdio::null())
             .stdout(Stdio::null())
             .status()?,
-        AppType::Exec => Command::new("hyprctl")
+        AppEvent::Exec(args) => Command::new("hyprctl")
             .args(["dispatch", "exec"])
-            .args(commands)
+            .args(args)
             .stdin(Stdio::null())
             .stdout(Stdio::null())
             .status()?,
+        AppEvent::Exit => return Ok(true),
     };
 
     if !status.success() {
@@ -70,7 +68,7 @@ pub fn run(
         )?;
     }
 
-    Ok(())
+    Ok(false)
 }
 
 #[derive(Deserialize)]
@@ -78,14 +76,12 @@ pub struct AppInfo {
     #[serde(default)]
     pub style: Style,
 
-    pub args: Vec<String>,
-
-    #[serde(rename = "type")]
-    pub event_type: AppType,
+    pub event: Vec<AppEvent>,
 }
 
 #[derive(Deserialize)]
 pub struct Config {
+    pub each: Vec<AppEvent>,
     #[serde(rename = "app")]
     pub apps: HashMap<String, AppInfo>,
 }
