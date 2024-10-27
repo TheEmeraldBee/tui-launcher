@@ -22,7 +22,9 @@ fn main() -> Result<()> {
     loop {
         for event in window.events() {
             if let Event::Key(k) = event {
-                if k.modifiers == KeyModifiers::CONTROL && k.code == KeyCode::Char('c') {
+                if (k.modifiers == KeyModifiers::CONTROL && k.code == KeyCode::Char('c'))
+                    || k.code == KeyCode::Esc
+                {
                     return Ok(());
                 } else if k.code == KeyCode::Backspace {
                     selected = 0;

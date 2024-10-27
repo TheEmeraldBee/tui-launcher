@@ -11,5 +11,4 @@ crossterm = { version = "0.28.1", features = ["serde"] }
 dirs = "5.0.1"
 hyprland = "0.3.13"
 serde = { version = "1.0.210", features = ["derive"] }
-skim = "0.10.4"
 toml = "0.8.19"

@@ -3,11 +3,9 @@ use std::{
     fs::File,
     io::Read,
     process::{Command, Stdio},
-    time::Duration,
 };
 
 use ascii_forge::window::Window;
-use hyprland::ctl::{notify, Color};
 use serde::Deserialize;
 
 use crate::matching::rank;
@@ -32,40 +30,28 @@ impl Default for Style {
 
 #[derive(Deserialize, Clone)]
 pub enum AppEvent {
-    /// Drop to shell and run command.
-    DropSh(Vec<String>),
-    Sh(Vec<String>),
-    Exec(Vec<String>),
+    Cmd(String),
+    Exec(String),
     Exit,
 }
 
 pub fn run(command: AppEvent, window: &mut Window) -> anyhow::Result<bool> {
-    let status = match command {
-        AppEvent::DropSh(args) => {
-            window.restore()?;
-            Command::new("sh").args(args).status()?
-        }
-        AppEvent::Sh(args) => Command::new("sh")
-            .args(args)
+    let output = match command {
+        AppEvent::Cmd(cmd) => Command::new("zsh")
+            .arg("-c")
+            .arg(cmd)
             .stdin(Stdio::null())
             .stdout(Stdio::null())
-            .status()?,
-        AppEvent::Exec(args) => Command::new("hyprctl")
-            .args(["dispatch", "exec"])
-            .args(args)
-            .stdin(Stdio::null())
-            .stdout(Stdio::null())
-            .status()?,
+            .output()?,
+        AppEvent::Exec(arg) => Command::new("zsh")
+            .args(["-c", &format!("hyprctl dispatch exec {}", arg)])
+            .output()?,
         AppEvent::Exit => return Ok(true),
     };
 
-    if !status.success() {
-        notify::call(
-            notify::Icon::Error,
-            Duration::from_secs(5),
-            Color::new(255, 255, 255, 255),
-            "Failed to execute Command for App Launcher".to_string(),
-        )?;
+    if !output.status.success() {
+        window.restore()?;
+        panic!("{:?}", output);
     }
 
     Ok(false)
